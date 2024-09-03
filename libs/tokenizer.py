@@ -52,6 +52,9 @@ class Token:
         literal_str = "null" if self.literal is None else str(self.literal)
         return f"{self.type.value} {self.lexeme} {literal_str}"
 
+    def __repr__(self):
+        return f"Token(type={self.type}, lexeme='{self.lexeme}', literal={self.literal}, line={self.line})"
+
 class Scanner:
     keywords = {
         "and": TokenType.AND,
