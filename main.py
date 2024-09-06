@@ -30,12 +30,17 @@ def main() -> None:
             exit(0)
 
     elif(command == "parse"):
-        tokens = tokenizer.Scanner(file_contents).scan_tokens()[0]
+        tokens, errors = tokenizer.Scanner(file_contents).scan_tokens()
+        if errors:
+            for error in errors:
+                print(error, file=sys.stderr)
+            exit(65)
+
         parse = parser.Parser(tokens)
-        ast = parse.expression()
-        printer = parser.AstPrinter()
-        print(printer.print(ast))
-        # inspect_object(ast)
+        ast = parse.parse()
+        if ast is not None:
+            printer = parser.AstPrinter()
+            print(printer.print(ast))
 
 if __name__ == "__main__":
 

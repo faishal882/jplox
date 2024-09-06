@@ -46,31 +46,35 @@ class Expr:
         def accept(self, visitor):
             return visitor.visit_unary_expr(self)
 
-# class Literal:
-#     def __init__(self, value):
-#         self.value = value
+class Lox:
+    @staticmethod
+    def error(token, message):
+        if token.type == TokenType.EOF:
+            print("")
+        else:
+            print(f"[Line {token.line}] Error at '{token.lexeme}': {message}")
 
-# class Unary:
-#     def __init__(self, operator, right):
-#         self.operator = operator
-#         self.right = right
+class ParseError(Exception):
+    pass
 
-# class Binary:
-#     def __init__(self, left, operator, right):
-#         self.left = left
-#         self.operator = operator
-#         self.right = right
-
-# class Grouping:
-#     def __init__(self, expression):
-#         self.expression = expression
-
+def error(token, message):
+    if token.type == TokenType.EOF:
+        Lox.error(token, message)
+    else:
+        Lox.error(token, message)
 
 
 class Parser:
     def __init__(self, tokens: List[Token]):
         self.tokens = tokens
         self.current = 0
+    
+    def parse(self):
+        try:
+            return self.expression()
+        except ParseError:
+            self.synchronize()
+            return None
 
     def expression(self):
         return self.equality()
@@ -125,9 +129,12 @@ class Parser:
             return Expr.Literal(self.previous().literal)
         if self.match(TokenType.LEFT_PAREN):
             expr = self.expression()
-            # self.consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")
-            self.consume(TokenType.RIGHT_PAREN)
+            self.consume(TokenType.RIGHT_PAREN, "Expect expression")
             return Expr.Grouping(expr)
+        if self.match(TokenType.IDENTIFIER):
+            return Expr.Literal(self.previous().literal)
+
+        raise self.error(self.peek(), "I AM FUCKED.")
 
     def match(self, *types: TokenType):
         for type in types:
@@ -136,11 +143,12 @@ class Parser:
                 return True
         return False
 
-    def consume(self, type: TokenType):
+    def consume(self, type: TokenType, message):
         if self.check(type):
             return self.advance()
-        return None
-     # raise self.error(self.peek(), message)
+        if self.is_at_end():
+            raise self.error(self.peek(), "")
+        raise self.error(self.peek(), message)
 
     def check(self, type: TokenType):
         if self.is_at_end():
@@ -160,12 +168,34 @@ class Parser:
 
     def previous(self):
         return self.tokens[self.current - 1]
+    
+    def error(self, token: Token, message):
+        Lox.error(token, message)
+        return ParseError()
 
+    def synchronize(self):
+        self.advance()
 
+        while not self.is_at_end():
+            if self.previous().type == TokenType.SEMICOLON:
+                return
+
+            if self.peek().type in [
+                TokenType.CLASS, TokenType.FUN, TokenType.VAR, TokenType.FOR,
+                TokenType.IF, TokenType.WHILE, TokenType.PRINT, TokenType.RETURN
+            ]:
+                return
+
+            self.advance()
+
+    
 #A Vistor class (Visitor Pattern)
 class AstPrinter(Expr.Visitor):
     def print(self, expr: Expr) -> str:
-        return expr.accept(self)
+        if expr is not None:
+             return expr.accept(self)
+        # else: 
+            # return ""
 
     def visit_binary_expr(self, expr: Expr.Binary) -> str:
         return self.parenthesize(expr.operator.lexeme, expr.left, expr.right)
