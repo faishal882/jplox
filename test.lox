@@ -1,1 +1,9 @@
-17 > "bar"
+{
+  var hello = "Hello, World!";
+  print hello;
+  {
+    var hello = "Hell!";
+    print hello;
+  }
+  print hello;
+}

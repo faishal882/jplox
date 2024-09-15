@@ -1,4 +1,7 @@
 from .tokenizer import TokenType
+from .parser import Expr, Stmt
+from .enviornment import Environment
+import sys
 
 def castBooleanToString(value):
     if value == True:
@@ -21,7 +24,9 @@ class RuntimeError(Exception):
         super().__init__(message)
         self.token = token
 
-class Interpreter:
+class Interpreter(Expr.Visitor, Stmt.Visitor):
+    environment = Environment()
+
     def visit_literal_expr(self, expr):
         result = expr.value
         return result
@@ -83,10 +88,57 @@ class Interpreter:
             result = None
         
         return result
+   
+    def visit_expression_stmt(self, stmt):
+        self.run(stmt.expression)
+        return None
+
+    def visit_print_stmt(self, stmt):
+        value = self.run(stmt.expression)
+        return value
     
+    def visit_var_stmt(self, stmt):
+        value = None
+        if stmt.initializer is not None:
+            value = self.run(stmt.initializer)
+
+        self.environment.define(stmt.name.lexeme, value)
+        return None
+
+    def visit_assign_expr(self, expr):
+        value = self.evaluate(expr.value)
+        self.environment.assign(expr.name, value)
+        return value
+
+
+    def visit_variable_expr(self, expr):
+        if self.environment.get(expr.name) is None:
+            return "nil"
+        return self.environment.get(expr.name)
+
+    def run(self, stmt):
+        return stmt.accept(self)
+        
     def evaluate(self, expr):
         return expr.accept(self)
+    
+    def execute_block(self, statements, environment):
+        previous = self.environment
+        result = [] 
+        try:
+            self.environment = environment
 
+            for statement in statements:
+                _result = self.run(statement)
+                if _result is not None:
+                    result.append(_result)
+        finally:
+            self.environment = previous
+        return result
+
+    def visit_block_stmt(self, stmt):
+        return self.execute_block(stmt.declarations, Environment(self.environment))
+        
     def isEqual(self, a, b):
         if a is None and b is None:
             return True

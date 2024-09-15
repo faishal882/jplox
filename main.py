@@ -2,6 +2,11 @@ import sys
 import pathlib
 from libs import tokenizer, parser, interpreter 
 
+def castNonetoNil(value):
+    if value is None:
+         return "nil"
+    return str(value)
+
 def remove_trailing_zeros(number_str):
     try:
         number = float(number_str)
@@ -9,6 +14,15 @@ def remove_trailing_zeros(number_str):
         return result
     except:
         return number_str
+
+def flatten(lst):
+    flat_list = []
+    for item in lst:
+        if isinstance(item, list):
+            flat_list.extend(flatten(item))
+        else:
+            flat_list.append(item)
+    return flat_list
 
 
 def main():
@@ -19,6 +33,8 @@ def main():
 
     scanner = tokenizer.Scanner(file_contents)
     tokens, errors = scanner.scan_tokens()
+    parse = parser.Parser(tokens)
+    _interpreter = interpreter.Interpreter()
     if command == "tokenize":
         for token in tokens:
             print(token)
@@ -37,24 +53,46 @@ def main():
                 print(error, file=sys.stderr)
             exit(65)
 
-        parse = parser.Parser(tokens)
         ast = parse.parse()
-        if ast is not None:
-            printer = parser.AstPrinter()
-            print(printer.print(ast))
+        if len(ast) == 0:
+            exit(65);
+        printer = parser.AstPrinter()
+        for stmt in ast:
+            print(printer.print(stmt))
     
     elif command == "evaluate":
-        parse = parser.Parser(tokens)
         ast = parse.parse()
+        print("EVAL: ", ast)
+        if len(ast) == 0 or parse.has_errors:
+            print("I AM FUCKED")
+            exit(65)
 
-        if ast is not None:
-            _interpreter = interpreter.Interpreter()
-            try:
-                eval = _interpreter.evaluate(ast)
-            except Exception as e:
-                print(e, file=sys.stderr)
-                exit(70)
-            print("EVAL: ", remove_trailing_zeros(eval))
+        try:
+            for stmt in ast:
+                eval = _interpreter.evaluate(stmt)
+                print("EVAL: ", remove_trailing_zeros(eval))
+        except Exception as e:
+            print(e, file=sys.stderr)
+            exit(70)
+
+    elif command == "run":
+        ast = parse.parse()
+        printer = parser.AstPrinter()
+        if len(ast) == 0 or parse.has_errors:
+            exit(65)
+        try:
+            for stmt in ast:
+                result = _interpreter.run(stmt)
+                if isinstance(result, list):
+                    _result = flatten(result)
+                    for r in _result:
+                        print(remove_trailing_zeros(r))
+                else:
+                    if result is not None:
+                        print(remove_trailing_zeros(result))
+        except Exception as e:
+            print(e, file=sys.stderr)
+            exit(70)
 
     else:
         print("Wrong command")
