@@ -1,9 +1,8 @@
 {
-  var hello = "Hello, World!";
-  print hello;
-  {
-    var hello = "Hell!";
-    print hello;
+  var x = 10;
+  if(x != 10) {
+    print "HELLO WORLD";
+  } else {
+    print "NOT HELLO";
   }
-  print hello;
 }

@@ -79,6 +79,9 @@ class Stmt:
         def visit_var_stmt(self, stmt):
             pass
 
+        def visit_if_stmt(self, stmt):
+            pass
+
         def visit_block_stmt(self, stmt):
             pass
 
@@ -104,6 +107,15 @@ class Stmt:
         def accept(self, visitor):
             return visitor.visit_var_stmt(self)
     
+    class If:
+        def __init__(self, condition, then_branch, else_branch=None):
+            self.condition = condition 
+            self.then_branch = then_branch  
+            self.else_branch = else_branch 
+
+        def accept(self, visitor):
+            return visitor.visit_if_stmt(self)
+
     class Block:
         def __init__(self, declarations):
             self.declarations = declarations 
@@ -169,7 +181,21 @@ class Parser:
             return self.print_statement()
         if self.match(TokenType.LEFT_BRACE):
             return Stmt.Block(self.block())
+        if self.match(TokenType.IF):
+            return self.if_statement()
         return self.expression_statement()
+    
+    def if_statement(self):
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'if'.")
+        condition = self.expression()
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after if condition.")
+
+        then_branch = self.statement()
+        else_branch = None
+        if self.match(TokenType.ELSE):
+            else_branch = self.statement()
+
+        return Stmt.If(condition, then_branch, else_branch)
 
     def print_statement(self):
         value = self.expression()
@@ -342,6 +368,9 @@ class AstPrinter(Expr.Visitor, Stmt.Visitor):
 
     def visit_var_stmt(self, stmt: Stmt.Var):
         return self.parenthesize(stmt.name, stmt.initializer)
+    
+    def visit_if_stmt(self, stmt: Stmt.If):
+        return self.parenthesize("if", stmt.condition, stmt.then_branch, stmt.else_branch)
 
     def visit_block_stmt(self, stmt: Stmt.Block):
         return self.parenthesize("block", *stmt.declarations)    

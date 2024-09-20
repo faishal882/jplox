@@ -35,7 +35,8 @@ class Interpreter(Expr.Visitor, Stmt.Visitor):
         right = self.evaluate(expr.right)
 
         if expr.operator.type == TokenType.BANG:
-            result = self.bangTruth(right)
+            # result = self.bangTruth(right)
+            result = self.is_truthy(right)
         elif expr.operator.type == TokenType.MINUS:
             self.check_number_operand(expr.operator, right)
             result = -float(right)
@@ -93,6 +94,14 @@ class Interpreter(Expr.Visitor, Stmt.Visitor):
         self.run(stmt.expression)
         return None
 
+    def visit_if_stmt(self, stmt):
+        #cast_to_boolean, python boolean True or False in lox true or false
+        if self.is_truthy(castStringToBoolean(self.evaluate(stmt.condition))): 
+            return self.run(stmt.then_branch)
+        elif stmt.else_branch is not None:
+            return self.run(stmt.else_branch)
+        return None
+
     def visit_print_stmt(self, stmt):
         value = self.run(stmt.expression)
         return value
@@ -145,16 +154,24 @@ class Interpreter(Expr.Visitor, Stmt.Visitor):
         if a is None:
             return False
         return a == b
-
-    def bangTruth(self, obj):
-        if obj == "false":
-            return "true"
-        elif obj == "true":
-            return "false"
-        elif obj == "nil":
-            return "true"
-        else:
-            return "false"
+    
+    def is_truthy(self, obj):
+        if obj is None:
+            return False
+        if isinstance(obj, bool):
+            return bool(obj)
+        return True
+    
+    #Made this function to pass test for codecrafters challenge
+    # def bangTruth(self, obj):
+    #     if obj == "false":
+    #         return "true"
+    #     elif obj == "true":
+    #         return "false"
+    #     elif obj == "nil":
+    #         return "true"
+    #     else:
+    #         return "false"
     
     def check_number_operand(self, operator, operand):
         if isinstance(operand, float):
