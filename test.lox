@@ -1,8 +1,10 @@
 {
- var x = 10;
- if(x != 10 and x == 10) {
-   print "yes";
- } else {
-   print "no";
- }
+var a = 0;
+var temp;
+
+for (var b = 1; a < 10000; b = temp + b) {
+  print a;
+  temp = a;
+  a = b;
+}
 }

@@ -96,6 +96,9 @@ class Stmt:
         def visit_block_stmt(self, stmt):
             pass
 
+        def visit_while_stmt(self, stmt):
+            pass
+
     class Expression:
         def __init__(self, expression):
             self.expression = expression
@@ -126,6 +129,14 @@ class Stmt:
 
         def accept(self, visitor):
             return visitor.visit_if_stmt(self)
+    
+    class While:
+        def __init__(self, condition, body):
+            self.condition = condition 
+            self.body = body 
+
+        def accept(self, visitor):
+            return visitor.visit_while_stmt(self)
 
     class Block:
         def __init__(self, declarations):
@@ -163,7 +174,6 @@ class Parser:
 
     def assignment(self):
         expr = self.or_expr()
-        # expr = self.equality()
 
         if self.match(TokenType.EQUAL):
             equals = self.previous()
@@ -214,6 +224,10 @@ class Parser:
             return Stmt.Block(self.block())
         if self.match(TokenType.IF):
             return self.if_statement()
+        if self.match(TokenType.WHILE):
+            return self.while_statement()
+        if self.match(TokenType.FOR):
+            return self.for_statement() 
         return self.expression_statement()
     
     def if_statement(self):
@@ -241,6 +255,56 @@ class Parser:
 
         self.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
         return Stmt.Var(name, initializer)
+    
+    def while_statement(self):
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.")
+        condition = self.expression()
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after condition.")
+        body = self.statement()
+
+        return Stmt.While(condition, body)
+    
+    def for_statement(self):
+        #syntactic sugar
+        self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
+
+        initializer = None
+        if self.match(TokenType.SEMICOLON):
+            initializer = None
+        elif self.match(TokenType.VAR):
+            initializer = self.var_declaration()
+        else:
+            initializer = self.expression_statement()
+
+        condition = None
+        if not self.check(TokenType.SEMICOLON):
+            condition = self.expression()
+
+        self.consume(TokenType.SEMICOLON, "Expect ';' after loop condition.")
+
+        increment = None
+        if not self.check(TokenType.RIGHT_PAREN):
+            increment = self.expression()
+
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.")
+
+        body = self.statement()
+
+        # Add increment to the end of the body
+        if increment is not None:
+            body = Stmt.Block([body, Stmt.Expression(increment)])
+
+        # Use 'true' as the default condition if none is provided
+        if condition is None:
+            condition = Expr.Literal(True)
+
+        body = Stmt.While(condition, body)
+
+        # If there's an initializer, wrap it with the loop in a block
+        if initializer is not None:
+            body = Stmt.Block([initializer, body])
+
+        return body
 
     def expression_statement(self):
         expr = self.expression()
@@ -406,6 +470,9 @@ class AstPrinter(Expr.Visitor, Stmt.Visitor):
     def visit_if_stmt(self, stmt: Stmt.If):
         return self.parenthesize("if", stmt.condition, stmt.then_branch, stmt.else_branch)
 
+    def visit_while_stmt(self, stmt: Stmt.While):
+        return self.parenthesize("while", stmt.condition, stmt.body)
+    
     def visit_block_stmt(self, stmt: Stmt.Block):
         return self.parenthesize("block", *stmt.declarations)    
 
@@ -415,7 +482,8 @@ class AstPrinter(Expr.Visitor, Stmt.Visitor):
         builder.append(f"({name}")
         for expr in exprs:
             builder.append(" ")
-            builder.append(expr.accept(self))
+            if expr is not None:
+                builder.append(expr.accept(self))
         builder.append(")")
 
         return "".join(builder)

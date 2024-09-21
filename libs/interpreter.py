@@ -126,6 +126,12 @@ class Interpreter(Expr.Visitor, Stmt.Visitor):
 
         self.environment.define(stmt.name.lexeme, value)
         return None
+    
+    def visit_while_stmt(self, stmt):
+        result = []
+        while self.is_truthy(castStringToBoolean(self.evaluate(stmt.condition))):
+            result.append(self.run(stmt.body))
+        return result
 
     def visit_assign_expr(self, expr):
         value = self.evaluate(expr.value)
@@ -146,7 +152,7 @@ class Interpreter(Expr.Visitor, Stmt.Visitor):
     
     def execute_block(self, statements, environment):
         previous = self.environment
-        result = [] 
+        result = []
         try:
             self.environment = environment
 
