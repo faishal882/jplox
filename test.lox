@@ -1,8 +1,8 @@
 {
-  var x = 10;
-  if(x != 10) {
-    print "HELLO WORLD";
-  } else {
-    print "NOT HELLO";
-  }
+ var x = 10;
+ if(x != 10 and x == 10) {
+   print "yes";
+ } else {
+   print "no";
+ }
 }

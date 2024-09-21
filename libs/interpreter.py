@@ -16,6 +16,8 @@ def castStringToBoolean(value):
         return True
     elif value == "false":
         return False
+    elif value == "nil":
+        return False
     else:
         return value
 
@@ -30,6 +32,17 @@ class Interpreter(Expr.Visitor, Stmt.Visitor):
     def visit_literal_expr(self, expr):
         result = expr.value
         return result
+    
+    def visit_logical_expr(self, expr):
+        left = self.evaluate(expr.left)
+        if expr.operator.type == TokenType.OR:
+            if self.is_truthy(castStringToBoolean(left)):
+                return left
+        else:
+            if not self.is_truthy(castStringToBoolean(left)):
+                return left
+
+        return self.evaluate(expr.right)
 
     def visit_unary_expr(self, expr):
         right = self.evaluate(expr.right)

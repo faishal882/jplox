@@ -20,6 +20,8 @@ class Expr:
 
         def visit_assign_expr(self, expr):
             pass
+        def visit_logical_expr(self, expr):
+            pass
 
     class Binary:
         def __init__(self, left, operator, right):
@@ -66,6 +68,15 @@ class Expr:
 
         def accept(self, visitor):
             return visitor.visit_assign_expr(self)
+
+    class Logical:
+        def __init__(self, left, operator, right):
+            self.left = left         
+            self.operator = operator  
+            self.right = right       
+
+        def accept(self, visitor):
+            return visitor.visit_logical_expr(self)
 
 
 class Stmt:
@@ -151,7 +162,8 @@ class Parser:
         return self.assignment()
 
     def assignment(self):
-        expr = self.equality()
+        expr = self.or_expr()
+        # expr = self.equality()
 
         if self.match(TokenType.EQUAL):
             equals = self.previous()
@@ -165,7 +177,26 @@ class Parser:
 
         return expr
 
+    def or_expr(self):
+        expr = self.and_expr()
+
+        while self.match(TokenType.OR):
+            operator = self.previous()
+            right = self.and_expr()
+            expr = Expr.Logical(expr, operator, right)
+
+        return expr
     
+    def and_expr(self):
+        expr = self.equality()
+
+        while self.match(TokenType.AND):
+            operator = self.previous()
+            right = self.equality()
+            expr = Expr.Logical(expr, operator, right)
+
+        return expr
+
     def declaration(self):
         try:
             if self.match(TokenType.VAR):
@@ -359,6 +390,9 @@ class AstPrinter(Expr.Visitor, Stmt.Visitor):
     
     def visit_assign_expr(self, expr: Expr.Assign):
         return self.parenthesize(expr.name.lexeme, expr.value)
+    
+    def visit_logical_expr(self, expr: Expr.Logical):
+        return self.parenthesize(expr.operator.lexeme, expr.left, expr.right)
 
     def visit_expression_stmt(self, stmt: Stmt.Expression):
         return self.print(stmt.expression)
