@@ -20,7 +20,11 @@ class Expr:
 
         def visit_assign_expr(self, expr):
             pass
+        
         def visit_logical_expr(self, expr):
+            pass
+
+        def visit_call_expr(self, expr):
             pass
 
     class Binary:
@@ -77,7 +81,15 @@ class Expr:
 
         def accept(self, visitor):
             return visitor.visit_logical_expr(self)
+    
+    class Call:
+        def __init__(self, callee, paren, arguments):
+            self.callee = callee         
+            self.paren = paren           
+            self.arguments = arguments 
 
+        def accept(self, visitor):
+            return visitor.visit_call_expr(self)
 
 class Stmt:
     class Visitor:
@@ -97,6 +109,12 @@ class Stmt:
             pass
 
         def visit_while_stmt(self, stmt):
+            pass
+
+        def visit_function_stmt(self, stmt):
+            pass
+
+        def visit_return_stmt(self, stmt):
             pass
 
     class Expression:
@@ -144,6 +162,24 @@ class Stmt:
 
         def accept(self, visitor):
             return visitor.visit_block_stmt(self)
+
+    class Function:
+        def __init__(self, name, params: List, body: List):
+            self.name = name            
+            self.params = params        
+            self.body = body            
+
+        def accept(self, visitor):
+            return visitor.visit_function_stmt(self)
+
+    class Return:
+        def __init__(self, keyword, value):
+            self.keyword = keyword  
+            self.value = value
+
+        def accept(self, visitor):
+            return visitor.visit_return_stmt(self)
+
 
 class Lox:
     @staticmethod
@@ -211,6 +247,8 @@ class Parser:
         try:
             if self.match(TokenType.VAR):
                 return self.var_declaration()
+            if self.match(TokenType.FUN):
+                return self.function("function")
             return self.statement()
         except ParseError:
             self.has_errors = True
@@ -220,6 +258,8 @@ class Parser:
     def statement(self):
         if self.match(TokenType.PRINT):
             return self.print_statement()
+        if self.match(TokenType.RETURN):
+            return self.return_statement()
         if self.match(TokenType.LEFT_BRACE):
             return Stmt.Block(self.block())
         if self.match(TokenType.IF):
@@ -247,6 +287,16 @@ class Parser:
         self.consume(TokenType.SEMICOLON, "Expect ';' after value.")
         return Stmt.Print(value)
     
+    def return_statement(self):
+        keyword = self.previous()
+        value = None
+
+        if not self.check(TokenType.SEMICOLON):  
+            value = self.expression()  
+
+        self.consume(TokenType.SEMICOLON, "Expect ';' after return value.")
+        return Stmt.Return(keyword, value)
+
     def var_declaration(self):
         name = self.consume(TokenType.IDENTIFIER, "Expect variable name.")
         initializer = None
@@ -255,6 +305,25 @@ class Parser:
 
         self.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
         return Stmt.Var(name, initializer)
+
+    def function(self, kind):
+        # Pass "method" for 'kind' in case of method declarations for specific error messages
+        name = self.consume(TokenType.IDENTIFIER, f"Expect {kind} name.")
+
+        self.consume(TokenType.LEFT_PAREN, f"Expect '(' after {kind} name.")
+        parameters = []
+        if not self.check(TokenType.RIGHT_PAREN):
+            while True:
+                if len(parameters) >= 255:
+                    self.error(self.peek(), "Can't have more than 255 parameters.")
+                parameters.append(self.consume(TokenType.IDENTIFIER, "Expect parameter name."))
+                if not self.match(TokenType.COMMA):
+                    break
+
+        self.consume(TokenType.RIGHT_PAREN, f"Expect ')' after parameters.")
+        self.consume(TokenType.LEFT_BRACE, f"Expect '{{' before {kind} body.")
+        body = self.block()
+        return Stmt.Function(name, parameters, body)
     
     def while_statement(self):
         self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.")
@@ -356,7 +425,31 @@ class Parser:
             operator = self.previous()
             right = self.unary()
             return Expr.Unary(operator, right)
-        return self.primary()
+        # return self.primary()
+        return self.call()
+
+    def call(self):
+        expr = self.primary()
+
+        while True:
+            if self.match(TokenType.LEFT_PAREN):
+                expr = self.finish_call(expr)
+            else:
+                break 
+        return expr
+
+    def finish_call(self, callee):
+        arguments = []
+        if not self.check(TokenType.RIGHT_PAREN):
+            while True:
+                if len(arguments) >= 255:
+                    self.error(self.peek(), "Can't have more than 255 arguments.")
+                arguments.append(self.expression())
+                if not self.match(TokenType.COMMA):
+                    break
+
+        paren = self.consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.")
+        return Expr.Call(callee, paren, arguments)
 
     def primary(self):
         if self.match(TokenType.FALSE):
@@ -460,6 +553,9 @@ class AstPrinter(Expr.Visitor, Stmt.Visitor):
 
     def visit_expression_stmt(self, stmt: Stmt.Expression):
         return self.print(stmt.expression)
+
+    def visit_call_expr(self, expr: Expr.Call):
+        return self.parenthesize(expr.callee, *expr.arguments)
     
     def visit_print_stmt(self, stmt: Stmt.Print):
         return self.parenthesize("print", stmt.expression)
@@ -474,7 +570,13 @@ class AstPrinter(Expr.Visitor, Stmt.Visitor):
         return self.parenthesize("while", stmt.condition, stmt.body)
     
     def visit_block_stmt(self, stmt: Stmt.Block):
-        return self.parenthesize("block", *stmt.declarations)    
+        return self.parenthesize("block", *stmt.declarations)
+
+    def visit_function_stmt(self, stmt: Stmt.Function):
+        return self.parenthesize(f"fun {stmt.name.lexeme} params {[*stmt.params]}",  *stmt.body)
+
+    def visit_return_stmt(self, stmt: Stmt.Return):
+        return self.parenthesize("return", stmt.value)
 
     def parenthesize(self, name: str, *exprs: Expr) -> str:
         builder = []

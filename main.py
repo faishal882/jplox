@@ -80,6 +80,8 @@ def main():
         printer = parser.AstPrinter()
         if len(ast) == 0 or parse.has_errors:
             exit(65)
+
+        # print("RUN: ", ast)
         try:
             for stmt in ast:
                 result = _interpreter.run(stmt)

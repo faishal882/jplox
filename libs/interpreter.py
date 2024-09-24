@@ -1,7 +1,10 @@
+import sys, time
 from .tokenizer import TokenType
 from .parser import Expr, Stmt
 from .enviornment import Environment
-import sys
+from .fun_impl.jplox_callable import LoxCallable
+from .fun_impl.jplox_function import LoxFunction, NativeFunction
+from .fun_impl.fun_return import Return
 
 def castBooleanToString(value):
     if value == True:
@@ -27,7 +30,20 @@ class RuntimeError(Exception):
         self.token = token
 
 class Interpreter(Expr.Visitor, Stmt.Visitor):
-    environment = Environment()
+    # environment = Environment()
+    globals = Environment()
+    environment = globals
+
+    def __init__(self):
+        self.globals = Environment()
+        self.environment = self.globals
+
+        # Define a native "clock" function, other native functions can be defined this way
+        self.globals.define("clock", NativeFunction(
+            arity_func=lambda: 0,
+            call_func=lambda interpreter, arguments: time.time(),
+            to_string_func=lambda: "<native fn>"
+        ))
 
     def visit_literal_expr(self, expr):
         result = expr.value
@@ -57,6 +73,22 @@ class Interpreter(Expr.Visitor, Stmt.Visitor):
             result = None
 
         return result
+    
+    def visit_call_expr(self, expr):
+        callee = self.evaluate(expr.callee)
+        arguments = []
+        for argument in expr.arguments:
+            arguments.append(self.evaluate(argument))
+
+        if not isinstance(callee, LoxCallable):
+            raise RuntimeError(expr.paren, "Can only call functions and classes.")
+
+        function = callee 
+
+        if len(arguments) != function.arity(): #arity: number of expected arguments
+            raise RuntimeError(expr.paren, f"Expected {function.arity()} arguments but got {len(arguments)}.")
+
+        return function.call(self, arguments)
 
     def visit_grouping_expr(self, expr):
         result = self.evaluate(expr.expression)
@@ -106,7 +138,12 @@ class Interpreter(Expr.Visitor, Stmt.Visitor):
     def visit_expression_stmt(self, stmt):
         self.run(stmt.expression)
         return None
-
+    
+    def visit_function_stmt(self, stmt):
+        function = LoxFunction(stmt)
+        self.environment.define(stmt.name.lexeme, function)
+        return None 
+    
     def visit_if_stmt(self, stmt):
         #cast_to_boolean, python boolean True or False in lox true or false
         if self.is_truthy(castStringToBoolean(self.evaluate(stmt.condition))): 
@@ -119,6 +156,14 @@ class Interpreter(Expr.Visitor, Stmt.Visitor):
         value = self.run(stmt.expression)
         return value
     
+    def visit_return_stmt(self, stmt):
+        value = None
+        if stmt.value is not None:
+            value = self.evaluate(stmt.value) 
+        
+        # print("return", value)
+        raise Return(value)
+
     def visit_var_stmt(self, stmt):
         value = None
         if stmt.initializer is not None:
@@ -162,6 +207,7 @@ class Interpreter(Expr.Visitor, Stmt.Visitor):
                     result.append(_result)
         finally:
             self.environment = previous
+        # print('ex:', result)
         return result
 
     def visit_block_stmt(self, stmt):

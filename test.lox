@@ -1,10 +1,8 @@
-{
-var a = 0;
-var temp;
+fun makeCounter() {
+  var i = 0;
+  i=i+1;
+  return i;
+}
 
-for (var b = 1; a < 10000; b = temp + b) {
-  print a;
-  temp = a;
-  a = b;
-}
-}
+var counter = makeCounter();
+print counter;
