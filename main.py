@@ -81,17 +81,16 @@ def main():
         if len(ast) == 0 or parse.has_errors:
             exit(65)
 
-        # print("RUN: ", ast)
         try:
             for stmt in ast:
-                result = _interpreter.run(stmt)
-                if isinstance(result, list):
-                    _result = flatten(result)
-                    for r in _result:
-                        print(remove_trailing_zeros(r))
-                else:
-                    if result is not None:
-                        print(remove_trailing_zeros(result))
+                _interpreter.run(stmt)
+                # if isinstance(result, list):
+                #     _result = flatten(result)
+                #     for r in _result:
+                #         print(remove_trailing_zeros(r))
+                # else:
+                #     if result is not None:
+                #         print(remove_trailing_zeros(result))
         except Exception as e:
             print(e, file=sys.stderr)
             exit(70)

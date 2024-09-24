@@ -197,18 +197,18 @@ class Interpreter(Expr.Visitor, Stmt.Visitor):
     
     def execute_block(self, statements, environment):
         previous = self.environment
-        result = []
+        # result = []
         try:
             self.environment = environment
 
             for statement in statements:
                 _result = self.run(statement)
                 if _result is not None:
-                    result.append(_result)
+                    print(_result)
+                    # result.append(_result)
         finally:
             self.environment = previous
-        # print('ex:', result)
-        return result
+        return None 
 
     def visit_block_stmt(self, stmt):
         return self.execute_block(stmt.declarations, Environment(self.environment))
