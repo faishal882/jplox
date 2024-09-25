@@ -11,3 +11,38 @@ fun makeCounter() {
 var counter = makeCounter();
 counter(); 
 counter();
+counter();
+
+fun scope(a) {
+  print a;
+  var a = "local";
+  print a;
+}
+
+scope("global");
+
+{
+  var a = "outer";
+  {
+    var a = "inner";
+    print a;
+  }
+  print a;
+}
+
+var a = "outer";
+{
+  print a;
+  var a = "inner";
+}
+
+var a = "global";
+{
+  fun showA() {
+    print a;
+  }
+
+  showA();
+  var a = "block";
+  showA();
+}
