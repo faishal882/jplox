@@ -26,3 +26,13 @@ class Environment:
     def define(self, name, value):
         self.values[name] = value
 
+    def get_at(self, distance, name):
+        return self.ancestor(distance).values.get(name)
+
+    def ancestor(self, distance):
+        environment = self
+        for _ in range(distance):
+            environment = environment.enclosing
+        return environment
+
+

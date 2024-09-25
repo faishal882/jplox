@@ -31,12 +31,14 @@ class RuntimeError(Exception):
 
 class Interpreter(Expr.Visitor, Stmt.Visitor):
     # environment = Environment()
-    globals = Environment()
-    environment = globals
+    # globals = Environment()
+    # environment = globals
+    # locals = {}
 
     def __init__(self):
         self.globals = Environment()
         self.environment = self.globals
+        self.locals = {}
 
         # Define a native "clock" function, other native functions can be defined this way
         self.globals.define("clock", NativeFunction(
@@ -185,12 +187,23 @@ class Interpreter(Expr.Visitor, Stmt.Visitor):
 
 
     def visit_variable_expr(self, expr):
-        if self.environment.get(expr.name) is None:
-            return "nil"
-        return self.environment.get(expr.name)
+        # if self.environment.get(expr.name) is None:
+        #     return "nil"
+        # return self.environment.get(expr.name)
+        return self.look_up_variable(expr.name, expr)
+
+    def look_up_variable(self, name, expr):
+        distance = self.locals.get(expr)
+        if distance is not None:
+            return self.environment.get_at(distance, name.lexeme)
+        else:
+            return self.globals.get(name)
 
     def run(self, stmt):
         return stmt.accept(self)
+
+    def resolve(self, expr, depth):
+        self.locals[expr] = depth
         
     def evaluate(self, expr):
         return expr.accept(self)

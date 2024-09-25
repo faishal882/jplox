@@ -1,6 +1,6 @@
 import sys
 import pathlib
-from libs import tokenizer, parser, interpreter 
+from libs import tokenizer, parser, interpreter, resolver  
 
 def castNonetoNil(value):
     if value is None:
@@ -35,6 +35,7 @@ def main():
     tokens, errors = scanner.scan_tokens()
     parse = parser.Parser(tokens)
     _interpreter = interpreter.Interpreter()
+    _resolver = resolver.Resolver(_interpreter)
     if command == "tokenize":
         for token in tokens:
             print(token)
@@ -80,6 +81,8 @@ def main():
         printer = parser.AstPrinter()
         if len(ast) == 0 or parse.has_errors:
             exit(65)
+
+        _resolver.resolve(ast)
 
         try:
             for stmt in ast:
