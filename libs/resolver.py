@@ -1,10 +1,15 @@
 from .parser import Expr, Stmt, Lox 
 
+class FunctionType:
+    NONE = "NONE"
+    FUNCTION = "FUNCTION"
 
 class Resolver(Expr.Visitor, Stmt.Visitor):
     def __init__(self, interpreter):
         self.interpreter = interpreter
         self.scopes = []
+        self.current_function = FunctionType.NONE
+        self.has_error = False
 
     def resolve(self, statements):
         for statement in statements:
@@ -19,7 +24,7 @@ class Resolver(Expr.Visitor, Stmt.Visitor):
     def visit_function_stmt(self, stmt):
         self.declare(stmt.name)
         self.define(stmt.name)
-        self.resolve_function(stmt)
+        self.resolve_function(stmt, FunctionType.FUNCTION)
         return None
 
     def visit_expression_stmt(self, stmt):
@@ -38,6 +43,9 @@ class Resolver(Expr.Visitor, Stmt.Visitor):
         return None
 
     def visit_return_stmt(self, stmt):
+        if self.current_function == FunctionType.NONE:
+            self.has_error = True 
+            Lox.error(stmt.keyword, "Can't return from top-level code.")
         if stmt.value is not None:
             self.resolve_expr(stmt.value)
         return None
@@ -98,13 +106,16 @@ class Resolver(Expr.Visitor, Stmt.Visitor):
     def resolve_expr(self, expr):
         expr.accept(self)
 
-    def resolve_function(self, function):
+    def resolve_function(self, function, function_type):
+        enclosing_function = self.current_function
+        self.current_function = function_type
         self.begin_scope()
         for param in function.params:
             self.declare(param)
             self.define(param)
         self.resolve(function.body)
         self.end_scope()
+        self.current_function = enclosing_function
 
     def begin_scope(self):
         self.scopes.append({})
@@ -116,6 +127,9 @@ class Resolver(Expr.Visitor, Stmt.Visitor):
         if not self.scopes:
             return
         scope = self.scopes[-1]
+        if name.lexeme in scope:
+            self.has_error = True 
+            Lox.error(name, f"Variable with this name already declared in this scope.")
         scope[name.lexeme] = False
 
     def define(self, name):

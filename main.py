@@ -84,6 +84,9 @@ def main():
 
         _resolver.resolve(ast)
 
+        if _resolver.has_error:
+            exit(65)
+
         try:
             for stmt in ast:
                 _interpreter.run(stmt)

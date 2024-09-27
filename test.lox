@@ -22,3 +22,11 @@ var a = "global";
   var a = "block";
   showA();
 }
+
+fun bad() {
+  var a = "second";
+  print a;
+}
+
+bad();
+
